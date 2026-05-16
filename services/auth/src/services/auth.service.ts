@@ -1,6 +1,6 @@
 import { User } from '../models/user.model';
 import { tokenService, TokenPair } from './token.service';
-import { otpService } from './otp.service';
+import { firebaseService } from './firebase.service';
 import { oauthService } from './oauth.service';
 import { publishAuthEvent } from '../utils/kafkaPublisher';
 import { logger } from '../utils/logger';
@@ -26,6 +26,8 @@ const Err = {
     otpInvalid: () => new AuthError('Invalid or expired OTP', 'OTP_INVALID', 400),
     otpRateLimit: () => new AuthError('Too many OTP requests', 'OTP_RATE_LIMIT', 429),
     googleInvalid: () => new AuthError('Invalid Google token', 'INVALID_GOOGLE_TOKEN', 401),
+    firebaseInvalid: () => new AuthError('Invalid or expired Firebase token', 'INVALID_FIREBASE_TOKEN', 401),
+    firebaseNotPhone: () => new AuthError('Firebase token must come from phone auth', 'FIREBASE_TOKEN_NOT_PHONE', 400),
     tokenReused: () => new AuthError('Session invalidated. Login again', 'TOKEN_REUSED', 401),
     tokenExpired: () => new AuthError('Session expired. Login again', 'TOKEN_EXPIRED', 401),
     tokenInvalid: () => new AuthError('Invalid session', 'TOKEN_INVALID', 401),
@@ -91,40 +93,62 @@ export const authService = {
         return tokenService.generatePair(user._id.toString());
     },
 
-    // ── SEND OTP ─────────────────────────────────────────────
-    async sendOtp(phone: string, ip: string, ua: string): Promise<void> {
+    // ── SEND OTP (DEPRECATED — replaced by Firebase Phone Auth) ──
+    // async sendOtp(phone: string, ip: string, ua: string): Promise<void> { ... }
+
+    // ── VERIFY OTP (DEPRECATED — replaced by Firebase Phone Auth) ─
+    // async verifyOtpAndLogin(phone: string, otp: string) { ... }
+
+    // ── LOGIN WITH FIREBASE PHONE AUTH ────────────────────────
+    // Flow:
+    //   1. Client performs phone verification entirely via Firebase SDK.
+    //   2. Client sends the resulting Firebase idToken to POST /v1/auth/login/firebase.
+    //   3. We verify the idToken server-side using firebase-admin.
+    //   4. We extract the verified phone number and upsert our own User document.
+    //   5. We issue our own RS256 access + refresh tokens (tokenService is unchanged).
+    async loginWithFirebase(idToken: string) {
+        // ── Verify Firebase token ─────────────────────────────
+        let firebasePayload: { phone: string; firebaseUid: string };
         try {
-            await otpService.send(phone, 'login', ip, ua);
+            firebasePayload = await firebaseService.verifyPhoneToken(idToken);
         } catch (err: any) {
-            if (err.message === 'OTP_RATE_LIMIT_EXCEEDED') throw Err.otpRateLimit();
-            throw err;
+            if (err.message === 'FIREBASE_TOKEN_NOT_PHONE') throw Err.firebaseNotPhone();
+            // Covers expired, revoked, malformed tokens
+            throw Err.firebaseInvalid();
         }
-    },
 
-    // ── VERIFY OTP ────────────────────────────────────────────
-    async verifyOtpAndLogin(phone: string, otp: string) {
-        const valid = await otpService.verify(phone, otp);
-        if (!valid) throw Err.otpInvalid();
+        const { phone, firebaseUid } = firebasePayload;
 
-        // Upsert: create account if first time, else login
+        // ── Upsert User ───────────────────────────────────────
         let user = await User.findByPhone(phone);
         let isNewUser = false;
 
         if (!user) {
+            // First time this phone number has authenticated — create account
             user = await User.create({
                 phone,
                 phoneVerified: true,
-                authProviders: [{ provider: 'phone', providerId: phone }],
+                authProviders: [{ provider: 'phone', providerId: firebaseUid }],
             });
             await publishAuthEvent('user.registered', {
-                userId: user._id.toString(), phone,
+                userId: user._id.toString(),
+                phone,
                 registeredAt: new Date().toISOString(),
             });
             isNewUser = true;
+            logger.info({ userId: user._id, phone }, 'New user registered via Firebase phone auth');
         } else {
-            await User.updateOne({ _id: user._id }, { phoneVerified: true });
+            // Returning user — ensure phone is marked verified
+            if (!user.phoneVerified) {
+                await User.updateOne({ _id: user._id }, { phoneVerified: true });
+            }
+            logger.info({ userId: user._id, phone }, 'Existing user logged in via Firebase phone auth');
         }
 
+        // ── Account health check ──────────────────────────────
+        if (user.accountStatus !== 'active') throw Err.accountSuspended();
+
+        // ── Issue our own JWT pair ────────────────────────────
         const tokens = await tokenService.generatePair(user._id.toString());
         return { tokens, isNewUser };
     },

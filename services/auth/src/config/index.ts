@@ -26,10 +26,10 @@ const envSchema = z.object({
     JWT_ISSUER: z.string().default('tripparty.auth'),
     JWT_AUDIENCE: z.string().default('tripparty.api'),
 
-    // ── Twilio (OTP via SMS) ────────────────────────────────
-    TWILIO_ACCOUNT_SID: z.string().startsWith('AC'),
-    TWILIO_AUTH_TOKEN: z.string().min(10),
-    TWILIO_PHONE_NUMBER: z.string().startsWith('+'),
+    // ── Firebase Admin (Phone Auth gateway) ──────────────────────
+    // Optional: base64-encoded service account JSON.
+    // If not set, falls back to GOOGLE_APPLICATION_CREDENTIALS / ADC.
+    FIREBASE_SERVICE_ACCOUNT_BASE64: z.string().optional(),
 
     // ── Google OAuth ────────────────────────────────────────
     GOOGLE_CLIENT_ID: z.string().min(10),
@@ -79,10 +79,8 @@ export const config = {
         audience: parsed.data.JWT_AUDIENCE,
     },
 
-    twilio: {
-        accountSid: parsed.data.TWILIO_ACCOUNT_SID,
-        authToken: parsed.data.TWILIO_AUTH_TOKEN,
-        phoneNumber: parsed.data.TWILIO_PHONE_NUMBER,
+    firebase: {
+        serviceAccountBase64: parsed.data.FIREBASE_SERVICE_ACCOUNT_BASE64,
     },
 
     google: {

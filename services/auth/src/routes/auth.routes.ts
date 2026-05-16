@@ -19,14 +19,25 @@ authRoutes.post('/login/phone',
     authController.loginPhone
 );
 
-authRoutes.post('/otp/send',
-    validateBody('sendOtp'),
-    authController.sendOtp
-);
+// ── DEPRECATED: Twilio/Redis OTP routes (replaced by Firebase Phone Auth) ──
+// authRoutes.post('/otp/send',
+//     validateBody('sendOtp'),
+//     authController.sendOtp
+// );
+//
+// authRoutes.post('/otp/verify',
+//     validateBody('verifyOtp'),
+//     authController.verifyOtp
+// );
 
-authRoutes.post('/otp/verify',
-    validateBody('verifyOtp'),
-    authController.verifyOtp
+// ── Firebase Phone Auth (NEW) ────────────────────────────────
+// Client completes phone verification via Firebase SDK, then sends
+// the resulting idToken here. We verify it server-side and issue
+// our own RS256 JWT pair.
+authRoutes.post('/login/firebase',
+    loginRateLimit,
+    validateBody('loginFirebase'),
+    authController.loginFirebase
 );
 
 authRoutes.post('/oauth/google',

@@ -21,13 +21,17 @@ const schemas = {
         password: z.string().min(1, 'Password required'),
     }),
 
-    sendOtp: z.object({
-        phone: e164Phone,
-    }),
+    // ── DEPRECATED: OTP schemas (kept for reference only) ──────────────────
+    // sendOtp: z.object({ phone: e164Phone }),
+    // verifyOtp: z.object({
+    //     phone: e164Phone,
+    //     otp: z.string().length(6).regex(/^\d{6}$/, 'OTP must be 6 digits'),
+    // }),
 
-    verifyOtp: z.object({
-        phone: e164Phone,
-        otp: z.string().length(6).regex(/^\d{6}$/, 'OTP must be 6 digits'),
+    // ── Firebase Phone Auth (NEW) ────────────────────────────────
+    // The client sends a Firebase ID token obtained after phone verification.
+    loginFirebase: z.object({
+        idToken: z.string().min(50, 'Invalid Firebase token'),
     }),
 
     oauthGoogle: z.object({

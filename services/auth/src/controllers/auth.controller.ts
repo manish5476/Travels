@@ -22,19 +22,24 @@ export const authController = {
         } catch (err) { next(err); }
     },
 
-    sendOtp: async (req: Request, res: Response, next: NextFunction) => {
-        try {
-            const ip = req.ip ?? 'unknown';
-            const ua = req.headers['user-agent'] ?? 'unknown';
-            await authService.sendOtp(req.body.phone, ip, ua);
-            res.json({ success: true, message: 'OTP sent to your phone number' });
-        } catch (err) { next(err); }
-    },
+    // ── DEPRECATED: sendOtp — replaced by Firebase Phone Auth ────────────
+    // sendOtp: async (req: Request, res: Response, next: NextFunction) => {
+    //     const ip = req.ip ?? 'unknown';
+    //     const ua = req.headers['user-agent'] ?? 'unknown';
+    //     await authService.sendOtp(req.body.phone, ip, ua);
+    //     res.json({ success: true, message: 'OTP sent to your phone number' });
+    // },
 
-    verifyOtp: async (req: Request, res: Response, next: NextFunction) => {
+    // ── DEPRECATED: verifyOtp — replaced by Firebase Phone Auth ──────────
+    // verifyOtp: async (req: Request, res: Response, next: NextFunction) => {
+    //     const result = await authService.verifyOtpAndLogin(req.body.phone, req.body.otp);
+    //     res.json({ success: true, data: result });
+    // },
+
+    // ── NEW: Login via Firebase Phone Auth ───────────────────────────────
+    loginFirebase: async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const { phone, otp } = req.body;
-            const result = await authService.verifyOtpAndLogin(phone, otp);
+            const result = await authService.loginWithFirebase(req.body.idToken);
             res.json({ success: true, data: result });
         } catch (err) { next(err); }
     },
