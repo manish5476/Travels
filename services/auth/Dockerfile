@@ -1,20 +1,42 @@
-# 1. Grab a "mini-laptop" that already has Node.js v20 installed
-FROM node:20-alpine
 
-# 2. Create a folder inside the mini-laptop called /app
+# ── STAGE 1: Install dependencies ─────────────────────────
+FROM node:20-alpine AS deps
 WORKDIR /app
-
-# 3. Copy your package.json from your real computer into the mini-laptop
 COPY package*.json ./
+RUN npm ci --frozen-lockfile
 
-# 4. Run npm install inside the mini-laptop
-RUN npm install
-
-# 5. Copy the rest of your code over
+# ── STAGE 2: Build TypeScript → JavaScript ─────────────────
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN npm run build
 
-# 6. Expose port 8001 (so your real computer can talk to it)
+# ── STAGE 3: Production (smallest image) ───────────────────
+FROM node:20-alpine AS prod
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY package*.json ./
+RUN npm ci --frozen-lockfile --omit=dev && npm cache clean --force
+COPY --from=build /app/dist ./dist
+
+# Never run containers as root
+USER node
+
 EXPOSE 8001
 
-# 7. Tell the mini-laptop what command to run to start the app
-CMD ["npm", "start"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget -qO- http://localhost:8001/health || exit 1
+
+CMD ["node", "dist/server.js"]
+
+# ── STAGE 4: Development (hot reload) ──────────────────────
+FROM node:20-alpine AS dev
+WORKDIR /app
+ENV NODE_ENV=development
+COPY package*.json ./
+RUN npm ci
+COPY . .
+EXPOSE 8001
+CMD ["npx","ts-node-dev","--respawn","--transpile-only","src/server.ts"]
