@@ -1,0 +1,11 @@
+{
+  "name": "tripparty-backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:auth": "cd services/auth && npm run dev",
+    "start:auth": "cd services/auth && npm start",
+    "docker:up": "docker-compose -f docker-compose.dev.yml up -d",
+    "docker:down": "docker-compose -f docker-compose.dev.yml down"
+  }
+}

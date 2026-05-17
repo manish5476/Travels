@@ -10,7 +10,7 @@ const envSchema = z.object({
     SERVICE_NAME: z.string().default('auth-service'),
 
     // ── MongoDB ─────────────────────────────────────────────
-    MONGODB_URI: z.string().url('MONGODB_URI must be a valid URL'),
+    MONGODB_URI: z.string().min(10, 'MONGODB_URI is required'),
 
     // ── Redis ───────────────────────────────────────────────
     REDIS_URL: z.string().min(5, 'REDIS_URL is required'),
