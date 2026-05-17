@@ -1,24 +1,6 @@
 version: '3.9'
 
 services:
-  # ── MongoDB ──────────────────────────────────────────────────
-  mongo:
-    image: mongo:7.0
-    container_name: tripparty_mongo
-    restart: unless-stopped
-    ports:
-      - '27017:27017'
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: devpass
-      MONGO_INITDB_DATABASE: tripparty_auth
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # ── Redis ────────────────────────────────────────────────────
   redis:
@@ -68,7 +50,6 @@ services:
       retries: 5
 
 volumes:
-  mongo_data:
   redis_data:
   zookeeper_data:
   kafka_data:
