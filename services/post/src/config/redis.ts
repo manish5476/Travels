@@ -1,4 +1,3 @@
-
 import Redis from 'ioredis';
 import { config } from './index';
 import { logger } from '../utils/logger';
