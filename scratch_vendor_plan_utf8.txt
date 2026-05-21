@@ -1,0 +1,274 @@
+__4\.5 vendors ÔÇö MongoDB Schema__
+
+__Field__
+
+__Type__
+
+__Index__
+
+__Description__
+
+\_id
+
+ObjectId
+
+PK
+
+ÔÇö
+
+owner\_user\_id
+
+ObjectIdÔåÆusers
+
+Index
+
+User account that manages this vendor profile\.
+
+business\_name
+
+String
+
+Text
+
+Max 100 chars\.
+
+category
+
+Enum
+
+Index
+
+'hotel'|'cab'|'tour\_guide'|'restaurant'|'activity'|'shop'
+
+description
+
+String
+
+Text
+
+Max 1000 chars\.
+
+media
+
+Object\[\]
+
+ÔÇö
+
+Business photos/videos\. Max 20\.
+
+location
+
+Object
+
+2dsphere
+
+\{ type:'Point', coordinates, address, city, state, pincode \}
+
+geofence\_radius\_km
+
+Number
+
+ÔÇö
+
+Geo\-trigger radius\. Default 5km, max 50km\.
+
+service\_area
+
+Object
+
+2dsphere Polygon
+
+For cab/tour vendors with wider coverage\.
+
+catalog
+
+Object\[\]
+
+ÔÇö
+
+\[\{ id, name, description, price, currency, unit:'per\_night|per\_trip|per\_person', availability\_calendar, active \}\]
+
+operating\_hours
+
+Object
+
+ÔÇö
+
+\{ mon:\{ open:'09:00', close:'21:00' \} \} per day\.
+
+rating
+
+Object
+
+ÔÇö
+
+\{ average:4\.7, count:234, breakdown:\{ 5:180, 4:40, 3:10, 2:2, 1:2 \} \}
+
+kyc
+
+Object
+
+ÔÇö
+
+\{ status, aadhaar\_verified, gst\_number, pan\_verified, reviewed\_at \}
+
+bank\_details\_ref
+
+String
+
+ÔÇö
+
+Secrets Manager reference\. Never store raw bank data\.
+
+subscription\_tier
+
+Enum
+
+Index
+
+'free'|'basic'|'growth'|'premium'
+
+is\_active
+
+Boolean
+
+Index
+
+Soft toggle\. Deactivate without losing data\.
+
+booking\_count
+
+Number
+
+ÔÇö
+
+Total confirmed bookings\. Social proof\.
+
+response\_rate
+
+Number
+
+ÔÇö
+
+% of requests responded to within 24h\.
+
+created\_at
+
+Date
+
+ÔÇö
+
+ÔÇö
+
+__  Ôûî Indexes: location \(2dsphere\), service\_area \(2dsphere\), category\+is\_active\+rating\.average, subscription\_tier, text on business\_name\+description\+city  __
+
+
+
+=================================
+
+NOT FOUND __12\. Hyper-Local
+
+=================================
+
+__18\.6 Vendor & Booking APIs__
+
+__Method__
+
+__Endpoint__
+
+__Auth__
+
+__Body / Params__
+
+__Response__
+
+GET
+
+/v1/vendors/nearby
+
+Bearer JWT
+
+?lat&lng&radius\_km&category
+
+\{ vendors:\[\], total \}
+
+GET
+
+/v1/vendors/:id
+
+Optional
+
+ÔÇö
+
+Full vendor profile with catalog
+
+GET
+
+/v1/vendors/:id/reviews
+
+Optional
+
+?cursor
+
+\{ reviews:\[\], next\_cursor \}
+
+GET
+
+/v1/vendors/:id/availability
+
+Bearer JWT
+
+?item\_id&start\_date&end\_date
+
+\{ available\_dates:\[\] \}
+
+POST
+
+/v1/bookings
+
+Bearer JWT
+
+\{ vendor\_id, catalog\_item\_id, dates, guests\[\] \}
+
+\{ booking\_id, payment\_order \}
+
+POST
+
+/v1/bookings/:id/confirm
+
+Razorpay webhook
+
+\{ payment\_id, signature \}
+
+\{ status: 'confirmed', qr\_url \}
+
+GET
+
+/v1/bookings/me
+
+Bearer JWT
+
+?status
+
+\{ bookings:\[\] \}
+
+POST
+
+/v1/bookings/:id/cancel
+
+Bearer JWT
+
+\{ reason \}
+
+\{ status: 'cancelled', refund\_amount \}
+
+POST
+
+/v1/vendors/:id/reviews
+
+Verified Booking JWT
+
+\{ rating, text, media\_urls\[\] \}
+
+Created review
+

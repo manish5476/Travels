@@ -1,24 +1,27 @@
 import express from 'express';
-import 'express-async-errors';
 import helmet from 'helmet';
-import pinoHttp from 'pino-http';
-import { logger } from '@tripparty/shared/logger';
-import { errorHandler } from '@tripparty/shared/middlewares/error.middleware';
-import { HttpError } from '@tripparty/shared/errors/HttpError';
+import cors from 'cors';
+import { errorMiddleware, requestLogger, requestId } from '@tripparty/shared';
 import vendorRoutes from './routes/vendor.routes';
 
-const app = express();
+export function createApp() {
+  const app = express();
 
-app.use(helmet());
-app.use(express.json());
-app.use(pinoHttp({ logger }));
+  // ── Security & parsing ───────────────────────────────────────────────
+  app.use(helmet());
+  app.use(cors({ origin: process.env.ALLOWED_ORIGINS?.split(',') || '*' }));
+  app.use(express.json({ limit: '2mb' }));
+  app.use(requestId);
+  app.use(requestLogger);
 
-app.use('/', vendorRoutes);
+  // ── Health check ─────────────────────────────────────────────────────
+  app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'vendor', ts: new Date() }));
 
-app.all('*', () => {
-  throw new HttpError(404, 'Not Found');
-});
+  // ── Routes ───────────────────────────────────────────────────────────
+  app.use('/v1/vendors', vendorRoutes);
 
-app.use(errorHandler);
+  // ── Error handler (must be last) ─────────────────────────────────────
+  app.use(errorMiddleware);
 
-export { app };
+  return app;
+}
